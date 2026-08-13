@@ -41,15 +41,13 @@ SKILL_CATALOG = build_skill_catalog(_SKILL_DOCS)
 TOOLS.append(LOAD_SKILL_TOOL)
 TOOL_FUNCTIONS["load_skill"] = make_load_skill(_SKILL_DOCS)
 
-print(f"TOOLS is {TOOLS}")
-print(f"TOOL_FUNCTIONS is {TOOL_FUNCTIONS}")
-
-
 
 def _run_agent_turn(messages: list, user_text: str, print_tool_logs: bool = True) -> str:
-    """Run one agent turn with tool handling and return final text reply."""
+    """Run one agent turn with tool handling and return final text reply.
 
-    messages = list(messages)
+    Mutates ``messages`` in place so conversation history persists across turns.
+    """
+
     messages.append({"role": "user", "content": user_text})
 
     while True:
@@ -115,21 +113,36 @@ def _run_agent_turn(messages: list, user_text: str, print_tool_logs: bool = True
 
             messages.append({"role": "user", "content": tool_results})
         elif response.stop_reason == "end_turn":
+            messages.append({"role": "assistant", "content": response.content})
+            final_text = ""
             for block in response.content:
-                final_text = block.text
                 if block.type == "text":
+                    final_text = block.text
                     print("\nClaude's final response:")
                     print(final_text)
-
-                return final_text
+            return final_text
 
 
 def main() -> None:
-    _run_agent_turn(
-        [],
-        "Please build the backport-iwlwifi project.",
-    )
-    print("All jobs done. Exiting.")
+    print("AI build agent ready. Tell me what you'd like to do.")
+    print("Type 'exit', 'quit', or press Ctrl-D to leave.\n")
+
+    messages: list = []
+    while True:
+        try:
+            user_text = input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+
+        if not user_text:
+            continue
+        if user_text.lower() in ("exit", "quit", "q"):
+            break
+
+        _run_agent_turn(messages, user_text)
+
+    print("Goodbye!")
 
 
 if __name__ == "__main__":
